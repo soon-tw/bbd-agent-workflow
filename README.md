@@ -3,6 +3,12 @@
 個人 / 團隊用的 AI Agent 效率提升技能集合（Agent Skills），採開放的 `SKILL.md` 格式，
 可安裝到 Claude Code、Codex CLI、Cursor、GitHub Copilot、Gemini CLI 等支援 Agent Skills 標準的代理。
 
+## 快速使用
+
+```skill
+npx skills add soon-tw/bbd-agent-workflow
+```
+
 ## 目錄結構
 
 ```
