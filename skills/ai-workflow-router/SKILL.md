@@ -169,49 +169,9 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 
 任一節點開始前，先回報「目前」；節點完成後，回報驗證證據與新的進度條。若工作流尚未完成但暫時沒有可執行動作，使用 `⛔ 阻塞`，同時說明阻塞原因、需要誰決策，以及解除後的下一步。
 
-## Code Review 模型與推理強度對照
+## Code Review 設定
 
-**專案預設（`.codex/config.toml`）：**
-
-```toml
-model = "gpt-5.6-terra"
-model_reasoning_effort = "high"
-```
-
-`gpt-5.6-terra` 是 GPT-5.6 家族裡的中階均衡款（性能大約對標 5.5、價格比旗艦 Sol 低約一半），搭配 high effort 作為所有等級的統一預設。
-
-| 等級 | 預設模型/effort | 可選降級（省成本用） |
-| --- | --- | --- |
-| 1 | gpt-5.6-terra / high | 可降 `--effort low`，明顯錯誤等級不需要高推理 |
-| 2 | gpt-5.6-terra / high | 可降 `--effort medium` |
-| 3 | gpt-5.6-terra / high | — |
-| 4 | gpt-5.6-terra / high | — |
-| 5（一般票） | gpt-5.6-terra / high | — |
-| 5（核心/高風險票） | gpt-5.6-terra / high + `--adversarial` | 不建議降級 |
-
-低等級任務若想更省，可在該次呼叫加 `--effort low` 或 `--effort medium` 覆蓋專案預設；不特別指定就一律套用 high。若某次任務特別在意品質，也可以臨時指定 `--model gpt-5.6-sol` 換旗艦模型，但成本會明顯上升，開始 review 前先問使用者是否要覆蓋。
-
-## 跨 AI 代理安裝方式
-
-SKILL.md 是開放格式，同一份檔案（含資料夾）可以原封不動用在 Claude Code、Codex CLI、Cursor、GitHub Copilot、Gemini CLI 等支援 Agent Skills 標準的代理上，差別只在放置路徑：
-
-| 代理 | 放置路徑 | 備註 |
-| --- | --- | --- |
-| Claude Code | `.claude/skills/ai-workflow-router/`（專案）或 `~/.claude/skills/`（個人全域） | 裝完在 CLI 執行 `/reload-plugins` 或重開 session |
-| Codex CLI | `.agents/skills/ai-workflow-router/`（專案）或 `~/.codex/skills/`（個人） | 也可放 `.codex/skills/`，效果相同 |
-| Cursor | `.agents/skills/ai-workflow-router/` | Cursor 的 skills 是外掛系統的其中一種原件，走 marketplace 或直接放資料夾都可以 |
-| GitHub Copilot (VS Code) | `.github/skills/ai-workflow-router/`（會進版控） | VS Code 也認 `.claude/skills/` 和 `.agents/skills/`，可用 `chat.agentSkillsLocations` 設定額外搜尋路徑 |
-| Gemini CLI | `.gemini/skills/ai-workflow-router/`，或放 `.agents/skills/` 當備援路徑 | |
-
-**最省事的做法：** 如果團隊裡用的代理不只一種，直接放在 `.agents/skills/ai-workflow-router/`——這是多數代理都會讀取的共用備援路徑，一份檔案全部代理通用，不用複製多份。也可以用 symlink 把同一份實體檔案連到各代理專屬路徑（例如 `ln -s ../../.agents/skills/ai-workflow-router .claude/skills/ai-workflow-router`），確保只有一個真本、改一次全部同步。
-
-若有現成的 CLI 工具（如 `npx skills add`），也可以直接指定目標代理安裝，例如：
-
-```bash
-npx skills add <你的repo或路徑> -a claude-code -a codex -a cursor
-```
-
-裝完之後大多數代理是「首次啟動自動偵測」，不用額外操作；Claude Code 則建議手動跑一次 `/reload-plugins` 確保吃到最新版本。
+預設使用 `gpt-5.6-terra` + high effort；Level 1 可降為 low，Level 2 可降為 medium，其餘維持 high。Level 5 的核心或高風險票加 `--adversarial`。
 
 ## 省 token 原則（每一級都要遵守）
 
@@ -220,4 +180,3 @@ npx skills add <你的repo或路徑> -a claude-code -a codex -a cursor
 3. 探索一律丟給 subagent，只把摘要帶回主 context。
 4. 對齊過的 spec/PRD 不用每個動作前都整份重讀一次。
 5. 規劃文件用完即關閉，不刻意保留造成 doc rot（除非使用者要求留存)。
-6. Code review 統一預設 `gpt-5.6-terra` + high effort（見上方對照表），Terra 本身已是均衡款，不必每次都手動調整；只有明顯瑣碎的 Level 1-2 任務才建議主動降到 low/medium 省成本，其餘等級沿用預設即可，不用逐次思考要不要降級。

@@ -42,20 +42,25 @@ bbd-agent-workflow/
 
 若尚未建立工作流或無法計算進度，代理必須顯示 `N/A`，並提供建議工作流、下一個可執行動作和推薦技能，不得只回覆「處理中」。
 
-## 安裝方式
+## 跨 AI 代理安裝方式
 
 依你使用的代理，把 `skills/` 底下對應的技能資料夾複製或建 symlink 到代理的技能路徑：
 
 | 代理 | 路徑 |
 | --- | --- |
-| Claude Code | `.claude/skills/<技能名>/`（專案）或 `~/.claude/skills/`（個人全域） |
-| Codex CLI | `.agents/skills/<技能名>/` 或 `~/.codex/skills/` |
+| Claude Code | `.claude/skills/<技能名>/`（專案）或 `~/.claude/skills/<技能名>/`（個人全域） |
+| Codex CLI | `.agents/skills/<技能名>/` 或 `~/.codex/skills/<技能名>/` |
 | Cursor | `.agents/skills/<技能名>/` |
 | GitHub Copilot (VS Code) | `.github/skills/<技能名>/` |
-| Gemini CLI | `.gemini/skills/<技能名>/`，或 `.agents/skills/` 當備援路徑 |
+| Gemini CLI | `.gemini/skills/<技能名>/`，或 `.agents/skills/<技能名>/` 當備援路徑 |
 
-多代理團隊建議統一放在 `.agents/skills/`，這是多數代理都會讀取的共用備援路徑，
-一份檔案全部代理通用。
+快速安裝：
+
+```bash
+npx skills add soon-tw/bbd-agent-workflow -a claude-code -a codex -a cursor
+```
+
+多代理團隊建議統一使用 `.agents/skills/`；更新後重啟代理即可載入最新技能。
 
 ## 授權
 
