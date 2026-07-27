@@ -1,11 +1,48 @@
 ---
 name: ai-workflow-router
-description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI 協作開發流程（直接實作 / to-spec / grill-with-docs+to-spec+to-tickets / wayfinder），並在實作與 code review 階段安排子代理與跨代理交接，code review 一律呼叫 codex-plugin-cc（可自訂模型與推理強度）。當使用者要開始一項新的程式開發任務——新功能、修改、重構、除錯——且尚未指定要用哪套規劃流程時，主動使用此技能詢問複雜度並依結果執行。任何「我要做/改/加 XXX」的請求都應該先觸發這個技能問一次分級，不要自己用預設流程硬做。
+description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI 協作開發流程（直接實作 / to-spec / grill-with-docs+to-spec+to-tickets / wayfinder），每個流程與作動任務都要回報進度條、目前位置、下一步和建議技能；沒有可追蹤進度時提供建議工作流。並在實作與 code review 階段安排子代理與跨代理交接，code review 一律呼叫 codex-plugin-cc（可自訂模型與推理強度）。當使用者要開始一項新的程式開發任務——新功能、修改、重構、除錯——且尚未指定要用哪套規劃流程時，主動使用此技能詢問複雜度並依結果執行。任何「我要做/改/加 XXX」的請求都應該先觸發這個技能問一次分級，不要自己用預設流程硬做。
 ---
 
 # AI Workflow Router
 
 依任務複雜度分五級，把 grilling / spec / ticket 拆分的「規劃投入」和任務大小成正比，避免小任務被過度規劃、大任務被規劃不足。核心來源：Matt Pocock skills v1.1（grill-with-docs、wayfinder、to-spec、to-tickets、implement、code-review）+ codex-plugin-cc 做 code review。
+
+## 全流程進度回報契約（每次作動都必須遵守）
+
+每個流程、每張票、每個子代理任務都要在「開始、狀態變更、完成或阻塞」時回報進度，不能只說「處理中」：
+
+```text
+工作流：Level X — <流程名稱>
+進度：`[████░░░░░░]` 40%（2/5）
+目前：🔄 <正在執行的步驟／任務>
+狀態：執行中
+下一步：<下一個可執行動作>
+建議技能：`<skill-a>`、`<skill-b>`
+```
+
+規則：
+
+- 已知步驟數時使用確定進度：`完成數 / 總數`；百分比只在必要任務完成並驗證後才遞增。
+- 未知範圍或動態拆票時使用 `進度：[----------] N/A（待盤點）`，不要捏造百分比；盤點完成後立刻建立步驟清單並改用確定進度。
+- 每個任務使用狀態圖例：`✅ 完成`、`🔄 執行中`、`⏳ 待處理`、`⛔ 阻塞`、`↪ 略過（附原因）`。未附證據不得標記完成。
+- 子代理或平行任務要逐項列出狀態；不能用一個總百分比掩蓋其中的阻塞或失敗。
+- 範圍變更時重新計算總數，並明確寫出「範圍由 A 變為 B」；阻塞時保留目前百分比，不得顯示 100%。
+- 完成回報必須包含驗證證據（測試、lint、review 或使用者確認），所有必要步驟驗證通過後才顯示 `100%`。
+
+### 沒有進度資料時的強制回應
+
+若沒有活躍工作流、目前任務或可計算的進度，不得留白，改用：
+
+```text
+工作流：尚未建立
+進度：`[----------]` N/A
+目前：尚未有可追蹤任務
+建議工作流：<Level 1-5> — <為什麼>
+下一步：<現在可以執行的第一個動作>
+建議技能：`<最適合的 skill>`、`<備選 skill>`
+```
+
+建議技能至少從下列規則選一組：需求模糊用 `wayfinder`／`grill-with-docs`；需求明確整理用 `to-spec`；拆分工作用 `to-tickets`；實作用 `implement`／`tdd`；除錯用 `hunt`／`diagnosing-bugs`；驗證與審查用 `verification-loop`／`code-review`。
 
 ## Step 0：一定要先問複雜度
 
@@ -20,11 +57,23 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 5 巨大/模糊 — 範圍本身還不確定，可能要先做研究才知道要做什麼
 ```
 
-不要自己猜測後直接開工——分級決定後面該不該花 token 做 grilling/wayfinder，猜錯會造成無效工作（小任務被過度規劃）或規劃不足（大任務直接跳實作，後面重工）。如果使用者的描述已經清楚到能自己判斷等級（例如「幫我修這個 typo」），可以省略提問直接標註「判斷為 Level 1，如果不對請糾正」再往下走。
+開始執行前先輸出一次「尚未建立」狀態，並把「判斷複雜度」列為第 1 個可追蹤任務：
+
+```text
+工作流：尚未建立
+進度：`[----------]` N/A
+目前：🔄 判斷任務複雜度（1-5）
+狀態：等待分級
+下一步：請使用者選擇等級，或依需求明確度標註建議等級
+建議技能：`ai-workflow-router`
+```
+
+不要自己猜測後直接開工——分級決定後面該不該花 token 做 grilling/wayfinder，猜錯會造成無效工作（小任務被過度規劃）或規劃不足（大任務直接跳實作，後面重工）。如果使用者的描述已經清楚到能自己判斷等級（例如「幫我修這個 typo」），可以省略提問直接標註「判斷為 Level 1，如果不對請糾正」再往下走。分級確定後，立刻建立該等級的步驟總數並更新進度條，不要繼續使用 N/A。
 
 ## Step 1：依等級執行對應流程
 
 ### Level 1 — 極小
+
 不呼叫任何規劃技能。直接理解需求、修改、跑對應的 test/lint。
 
 **Code review：** `/codex:review --model gpt-5.6-terra --effort low`，只抓明顯錯誤，不用長篇報告。
@@ -32,6 +81,7 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 ---
 
 ### Level 2 — 小型
+
 呼叫 `/to-spec`（不訪談，只是把已經講清楚的需求統整成一份簡短 spec），跳過拆票，直接進 TDD 實作。
 
 **子代理／交接：** explore 階段可以丟給 subagent，讓它去讀相關程式碼，只把摘要帶回主 context。
@@ -41,6 +91,7 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 ---
 
 ### Level 3 — 中型
+
 1. `/grill-with-docs`（不是舊版 `/grill-me`——它會順便維護 CONTEXT.md 詞彙表和 ADR，長期報酬率更高），5-15 題左右對齊即可
 2. `/to-spec`
 3. `/to-tickets` 拆成 2-5 張垂直切片票，標出彼此的阻擋關係
@@ -52,6 +103,7 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 ---
 
 ### Level 4 — 大型
+
 1. `/grill-with-docs`（完整版，範圍大就別省這步）
 2. `/to-spec`
 3. `/to-tickets`，每張票標註：
@@ -60,6 +112,7 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
    - 垂直切片，第一刀要能看到 schema + service + 前端最小畫面
 
 **子代理／交接（這一級是重點）：**
+
 - 沒有阻擋關係的票，平行分派給多個 implement agent／subagent 同時做（類似 Sand Castle 的 planner → 多個 sandbox → merger 架構）
 - 認領協議同 Level 3：先 assign 才算 claim
 - **交接時給 implement agent 的資訊要完整**，不能只丟 diff 或一句話摘要：
@@ -73,28 +126,62 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 ---
 
 ### Level 5 — 巨大／模糊
+
 1. `/wayfinder`，先把「迷霧」清出來，而不是硬上 to-spec
 2. **常見誤用（一定要避免）：** 不要對地圖上單一張任務直接 `/implement`。正確做法是持續對地圖跑 wayfinder，讓它把地圖上的任務逐一解決、決策記錄進「Decisions so far」，直到迷霧清空（wayfinder 自己會判斷路徑已清晰），才整包轉 `/to-spec`
 3. 迷霧清空後：`/to-spec` → `/to-tickets`，其餘同 Level 4
 
 **子代理／交接：**
+
 - 地圖上的 research 類型票天生適合丟給 subagent 或背景 agent 離線跑，因為只是去找答案回報，不需要人即時互動
 - grilling/prototype 類的決策票必須 HITL，不能讓 agent 自問自答——這類票的「交接」對象是使用者本人，不是另一個 agent
 - 進入 to-tickets 之後的並行策略同 Level 4
 
 **Code review：** 同 Level 4，但對核心路徑或高風險的票，加開一次 `/codex:review --model gpt-5.6-terra --effort high --adversarial`，用對抗性審查多找一輪問題。
 
+## 標準流程節點與回報方式
+
+分級完成後，先把必要節點列成任務清單，再依序更新總進度。下列是預設節點；若任務不需要某節點，標記 `↪ 略過` 並附原因，不要悄悄刪除分母：
+
+| 等級 | 預設流程節點 |
+| --- | --- |
+| Level 1 | 分級 → 實作 → 驗證 |
+| Level 2 | 分級 → `to-spec` → 實作／TDD → 驗證／review |
+| Level 3 | 分級 → `grill-with-docs` → `to-spec` → `to-tickets` → 實作 → review／整合 QA |
+| Level 4 | 分級 → `grill-with-docs` → `to-spec` → `to-tickets` → 平行實作 → 各票 review → 整合 QA |
+| Level 5 | 分級 → `wayfinder` → 決策完成 → `to-spec` → `to-tickets` → 實作 → review／整合 QA |
+
+每個節點開始與結束都使用下列格式；節點內有多個票或子代理時，另外列出明細：
+
+```text
+工作流總覽：Level 3 — 中型功能
+進度：`[██████░░░░]` 60%（3/5 節點）
+目前：🔄 `to-tickets` — 拆分垂直切片
+任務明細：
+- ✅ `grill-with-docs` — 已完成，決策已記錄
+- ✅ `to-spec` — 已完成，spec 已確認
+- 🔄 `to-tickets` — 執行中
+- ⏳ 實作 — 等待票據
+- ⏳ review／整合 QA — 等待實作
+下一步：完成票據拆分並標記阻擋關係
+建議技能：`to-tickets`、`implement`
+```
+
+任一節點開始前，先回報「目前」；節點完成後，回報驗證證據與新的進度條。若工作流尚未完成但暫時沒有可執行動作，使用 `⛔ 阻塞`，同時說明阻塞原因、需要誰決策，以及解除後的下一步。
+
 ## Code Review 模型與推理強度對照
 
 **專案預設（`.codex/config.toml`）：**
+
 ```toml
 model = "gpt-5.6-terra"
 model_reasoning_effort = "high"
 ```
+
 `gpt-5.6-terra` 是 GPT-5.6 家族裡的中階均衡款（性能大約對標 5.5、價格比旗艦 Sol 低約一半），搭配 high effort 作為所有等級的統一預設。
 
 | 等級 | 預設模型/effort | 可選降級（省成本用） |
-|---|---|---|
+| --- | --- | --- |
 | 1 | gpt-5.6-terra / high | 可降 `--effort low`，明顯錯誤等級不需要高推理 |
 | 2 | gpt-5.6-terra / high | 可降 `--effort medium` |
 | 3 | gpt-5.6-terra / high | — |
@@ -109,7 +196,7 @@ model_reasoning_effort = "high"
 SKILL.md 是開放格式，同一份檔案（含資料夾）可以原封不動用在 Claude Code、Codex CLI、Cursor、GitHub Copilot、Gemini CLI 等支援 Agent Skills 標準的代理上，差別只在放置路徑：
 
 | 代理 | 放置路徑 | 備註 |
-|---|---|---|
+| --- | --- | --- |
 | Claude Code | `.claude/skills/ai-workflow-router/`（專案）或 `~/.claude/skills/`（個人全域） | 裝完在 CLI 執行 `/reload-plugins` 或重開 session |
 | Codex CLI | `.agents/skills/ai-workflow-router/`（專案）或 `~/.codex/skills/`（個人） | 也可放 `.codex/skills/`，效果相同 |
 | Cursor | `.agents/skills/ai-workflow-router/` | Cursor 的 skills 是外掛系統的其中一種原件，走 marketplace 或直接放資料夾都可以 |
@@ -119,6 +206,7 @@ SKILL.md 是開放格式，同一份檔案（含資料夾）可以原封不動�
 **最省事的做法：** 如果團隊裡用的代理不只一種，直接放在 `.agents/skills/ai-workflow-router/`——這是多數代理都會讀取的共用備援路徑，一份檔案全部代理通用，不用複製多份。也可以用 symlink 把同一份實體檔案連到各代理專屬路徑（例如 `ln -s ../../.agents/skills/ai-workflow-router .claude/skills/ai-workflow-router`），確保只有一個真本、改一次全部同步。
 
 若有現成的 CLI 工具（如 `npx skills add`），也可以直接指定目標代理安裝，例如：
+
 ```bash
 npx skills add <你的repo或路徑> -a claude-code -a codex -a cursor
 ```
