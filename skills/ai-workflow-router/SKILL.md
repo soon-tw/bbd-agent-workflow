@@ -1,11 +1,14 @@
 ---
 name: ai-workflow-router
-description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI 協作開發流程（直接實作 / to-spec / grill-with-docs+to-spec+to-tickets / wayfinder），每個流程與作動任務都要回報進度條、目前位置、下一步和建議技能；沒有可追蹤進度時提供建議工作流。並在實作與 code review 階段安排子代理與跨代理交接，code review 一律呼叫 codex-plugin-cc（可自訂模型與推理強度）。當使用者要開始一項新的程式開發任務——新功能、修改、重構、除錯——且尚未指定要用哪套規劃流程時，主動使用此技能詢問複雜度並依結果執行。任何「我要做/改/加 XXX」的請求都應該先觸發這個技能問一次分級，不要自己用預設流程硬做。
+version: 0.2.0
+description: 依任務複雜度（0-5 級）自動選擇並執行對應的 AI 協作開發流程（預設 AI agent 直處理 / 直接實作 / to-spec / grill-with-docs+to-spec+to-tickets / wayfinder），每個流程與作動任務都要回報進度條、目前位置、下一步和建議技能；沒有可追蹤進度時提供建議工作流。並在實作與 code review 階段安排子代理與跨代理交接，code review 一律呼叫 codex-plugin-cc（可自訂模型與推理強度）。當使用者要開始一項新的程式開發任務——新功能、修改、重構、除錯——且尚未指定要用哪套規劃流程時，主動使用此技能詢問複雜度並依結果執行。任何「我要做/改/加 XXX」的請求都應該先觸發這個技能問一次分級，不要自己用預設流程硬做。
 ---
 
 # AI Workflow Router
 
-依任務複雜度分五級，把 grilling / spec / ticket 拆分的「規劃投入」和任務大小成正比，避免小任務被過度規劃、大任務被規劃不足。核心來源：Matt Pocock skills v1.1（grill-with-docs、wayfinder、to-spec、to-tickets、implement、code-review）+ codex-plugin-cc 做 code review。
+目前版本：v0.2.0
+
+依任務複雜度分六級，把 grilling / spec / ticket 拆分的「規劃投入」和任務大小成正比，避免小任務被過度規劃、大任務被規劃不足。Level 0 不使用技能，由預設 AI agent 直接處理。核心來源：Matt Pocock skills v1.1（grill-with-docs、wayfinder、to-spec、to-tickets、implement、code-review）+ codex-plugin-cc 做 code review。
 
 ## 全流程進度回報契約（每次作動都必須遵守）
 
@@ -28,6 +31,7 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 - 子代理或平行任務要逐項列出狀態；不能用一個總百分比掩蓋其中的阻塞或失敗。
 - 範圍變更時重新計算總數，並明確寫出「範圍由 A 變為 B」；阻塞時保留目前百分比，不得顯示 100%。
 - 完成回報必須包含驗證證據（測試、lint、review 或使用者確認），所有必要步驟驗證通過後才顯示 `100%`。
+- Level 0 不使用技能；若需要回報進度，`建議技能` 填寫 `無（Level 0 不使用技能）`。
 
 ### 沒有進度資料時的強制回應
 
@@ -37,19 +41,20 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 工作流：尚未建立
 進度：`[----------]` N/A
 目前：尚未有可追蹤任務
-建議工作流：<Level 1-5> — <為什麼>
+建議工作流：<Level 0-5> — <為什麼>
 下一步：<現在可以執行的第一個動作>
 建議技能：`<最適合的 skill>`、`<備選 skill>`
 ```
 
-建議技能至少從下列規則選一組：需求模糊用 `wayfinder`／`grill-with-docs`；需求明確整理用 `to-spec`；拆分工作用 `to-tickets`；實作用 `implement`／`tdd`；除錯用 `hunt`／`diagnosing-bugs`；驗證與審查用 `verification-loop`／`code-review`。
+除 Level 0 外，建議技能至少從下列規則選一組：需求模糊用 `wayfinder`／`grill-with-docs`；需求明確整理用 `to-spec`；拆分工作用 `to-tickets`；實作用 `implement`／`tdd`；除錯用 `hunt`／`diagnosing-bugs`；驗證與審查用 `verification-loop`／`code-review`。
 
 ## Step 0：一定要先問複雜度
 
-任務開始前，先用簡短的一句話描述每一級，讓使用者選 1-5：
+任務開始前，先用簡短的一句話描述每一級，讓使用者選 0-5：
 
 ```
 這個任務的複雜度大概是？
+0 預設處理 — 不使用技能，由預設 AI agent 直接處理
 1 極小 — 單行/單一小修正，需求已經很明確
 2 小型 — 單一函式或模組，你自己心裡已經有答案
 3 中型 — 跨 2-5 個檔案的單一功能，需要對齊一下細節
@@ -62,15 +67,19 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 ```text
 工作流：尚未建立
 進度：`[----------]` N/A
-目前：🔄 判斷任務複雜度（1-5）
+目前：🔄 判斷任務複雜度（0-5）
 狀態：等待分級
 下一步：請使用者選擇等級，或依需求明確度標註建議等級
 建議技能：`ai-workflow-router`
 ```
 
-不要自己猜測後直接開工——分級決定後面該不該花 token 做 grilling/wayfinder，猜錯會造成無效工作（小任務被過度規劃）或規劃不足（大任務直接跳實作，後面重工）。如果使用者的描述已經清楚到能自己判斷等級（例如「幫我修這個 typo」），可以省略提問直接標註「判斷為 Level 1，如果不對請糾正」再往下走。分級確定後，立刻建立該等級的步驟總數並更新進度條，不要繼續使用 N/A。
+不要自己猜測後直接開工——分級決定後面該不該使用技能或花 token 做 grilling/wayfinder，猜錯會造成無效工作（小任務被過度規劃）或規劃不足（大任務直接跳實作，後面重工）。如果使用者的描述已經清楚到能自己判斷等級（例如「幫我修這個 typo」），可以省略提問直接標註「判斷為 Level 1，如果不對請糾正」再往下走。分級確定後，立刻建立該等級的步驟總數並更新進度條，不要繼續使用 N/A。
 
 ## Step 1：依等級執行對應流程
+
+### Level 0 — 預設 AI agent 直處理
+
+不使用任何技能，也不呼叫規劃流程、子代理或 code review；停止本 router 的流程編排，直接由預設 AI agent 依使用者需求處理，並只做必要的基本驗證。
 
 ### Level 1 — 極小
 
@@ -145,6 +154,7 @@ description: 依任務複雜度（1-5 級）自動選擇並執行對應的 AI �
 
 | 等級 | 預設流程節點 |
 | --- | --- |
+| Level 0 | 分級 → 預設 AI agent 直接處理 → 必要驗證 |
 | Level 1 | 分級 → 實作 → 驗證 |
 | Level 2 | 分級 → `to-spec` → 實作／TDD → 驗證／review |
 | Level 3 | 分級 → `grill-with-docs` → `to-spec` → `to-tickets` → 實作 → review／整合 QA |

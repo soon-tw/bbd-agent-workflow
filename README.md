@@ -26,11 +26,13 @@ bbd-agent-workflow/
 
 | 技能 | 說明 |
 | --- | --- |
-| [`ai-workflow-router`](skills/ai-workflow-router/SKILL.md) | 依任務複雜度（1-5 級）自動選擇對應的 AI 協作開發流程（直接實作 / to-spec / grill-with-docs+to-spec+to-tickets / wayfinder），每個流程與作動任務都顯示進度條、目前位置、下一步和建議技能；並安排子代理分工與跨代理交接；code review 統一呼叫 codex-plugin-cc（預設 `gpt-5.6-terra` + high effort）。 |
+| [`ai-workflow-router`](skills/ai-workflow-router/SKILL.md) | v0.2.0；依任務複雜度（0-5 級）自動選擇對應的 AI 協作開發流程（Level 0 預設 AI agent 直處理 / 直接實作 / to-spec / grill-with-docs+to-spec+to-tickets / wayfinder），每個流程與作動任務都顯示進度條、目前位置、下一步和建議技能；並安排子代理分工與跨代理交接；code review 統一呼叫 codex-plugin-cc（預設 `gpt-5.6-terra` + high effort）。 |
 
 ## 進度回報
 
 `ai-workflow-router` 現在要求代理在每個流程與任務的開始、狀態變更、完成或阻塞時回報：
+
+選擇 Level 0 時，不使用任何技能或額外協作流程，直接由預設 AI agent 處理需求，完成必要的基本驗證。
 
 ```text
 工作流總覽：Level 3 — 中型功能
