@@ -15,7 +15,10 @@ npx skills add soon-tw/bbd-agent-workflow
 bbd-agent-workflow/
 └── skills/
     └── ai-workflow-router/
-        └── SKILL.md
+        ├── SKILL.md
+        └── references/
+            ├── context-management.md
+            └── prompt-templates.md
 ```
 
 每個技能一個資料夾，資料夾名稱就是技能名稱，內含一份 `SKILL.md`（必要）與可選的
@@ -26,15 +29,11 @@ bbd-agent-workflow/
 
 | 技能 | 說明 |
 | --- | --- |
-| [`ai-workflow-router`](skills/ai-workflow-router/SKILL.md) | v0.2.0；依任務複雜度（0-5 級）自動選擇對應的 AI 協作開發流程（Level 0 預設 AI agent 直處理 / 直接實作 / to-spec / grill-with-docs+to-spec+to-tickets / wayfinder），每個流程與作動任務都顯示進度條、目前位置、下一步和建議技能；並安排子代理分工與跨代理交接；code review 統一呼叫 codex-plugin-cc（預設 `gpt-5.6-terra` + high effort）。 |
+| [`ai-workflow-router`](skills/ai-workflow-router/SKILL.md) | v0.4.0；依任務複雜度、上下文壓力與目前 AI agent 機制，建議最小工作流、context mode、技能搭配及提示詞。透過按需載入的 context 管理與提示詞 references 支援 compact、子代理隔離、artifact-first handoff、reset 與獨立 review；不會自動啟動流程。 |
 
-## 進度回報
+## 使用方式
 
-`ai-workflow-router` 現在要求代理在每個流程與任務的開始、狀態變更、完成或阻塞時回報：
-
-進度格式只在 [SKILL.md](skills/ai-workflow-router/SKILL.md) 定義一次；README 僅保留規則摘要：Level 0 填「技能：無」，無法計算時填 `N/A（待盤點）`，多票／子代理才補 `明細`。
-
-若尚未建立工作流或無法計算進度，代理必須顯示 `N/A`，並提供建議工作流、下一個可執行動作和推薦技能，不得只回覆「處理中」。
+在需要規劃、選擇技能、評估協作方式或管理長任務 context 時使用 `ai-workflow-router`。它會同時評估任務複雜度、上下文壓力，以及當前 agent 是否支援 skills、子代理、平行／背景任務、artifacts、獨立 review 與驗證工具，再提供最小流程與可貼用提示詞。主技能保持精簡，只有需要時才載入 `references/` 中的詳細策略。
 
 ## 跨 AI 代理安裝方式
 
