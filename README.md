@@ -29,7 +29,7 @@ bbd-agent-workflow/
 
 | 技能 | 說明 |
 | --- | --- |
-| [`ai-workflow-router`](skills/ai-workflow-router/SKILL.md) | v0.4.0；依任務複雜度、上下文壓力與目前 AI agent 機制，建議最小工作流、context mode、技能搭配及提示詞。透過按需載入的 context 管理與提示詞 references 支援 compact、子代理隔離、artifact-first handoff、reset 與獨立 review；不會自動啟動流程。 |
+| [`ai-workflow-router`](skills/ai-workflow-router/SKILL.md) | v0.5.0；依任務複雜度、上下文壓力與目前 AI agent 機制，建議最小工作流、context mode、技能搭配及提示詞。區分人為觸發的流程技能與 agent 可觸發的工作紀律，並透過按需載入的 references 支援 context 管理；不會自動啟動流程。 |
 
 ## 使用方式
 

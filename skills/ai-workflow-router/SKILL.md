@@ -33,6 +33,13 @@ description: 依任務複雜度、上下文壓力與目前 AI agent 能力，建
 
 技能只在目前環境可用且能降低風險時才建議：需求模糊用 `wayfinder`／`grill-with-docs`；需求整理用 `to-spec`；拆分用 `to-tickets`；實作用 `implement`／`tdd`；除錯用 `hunt`／`diagnosing-bugs`；驗證用 `verification-loop`／`code-review`。
 
+使用 Matt Pocock skills 時，依新版顆粒度分開處理：
+
+- `grill-with-docs`、`to-spec`、`to-tickets`、`implement`、`wayfinder` 是人為觸發的流程技能；只建議最接近的一個入口，不自動串跑整套流程。
+- `tdd`、`diagnosing-bugs`、`code-review`、`codebase-design`、`domain-modeling` 是可由 agent 按任務觸發的工作紀律；需要時搭配流程技能，不取代流程入口。
+- 可執行的設計疑問用 `prototype`；需查外部一手資料用 `research`；只有人能完成的設定步驟用 `wizard`；已進入 merge／rebase 衝突時用 `resolving-merge-conflicts`。
+- `setup-matt-pocock-skills` 只在 repo 尚未設定 issue tracker／domain docs 時使用；`ask-matt` 與本技能同為 router，不重複搭配。
+
 ## Step 3：選擇 Context Mode
 
 | Mode | 適用情境 |
